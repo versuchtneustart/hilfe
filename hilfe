@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Meine benutzerdefinierte Google Map</title>
+  <style>
+    /* Hier können Sie Ihren benutzerdefinierten Kartenstil definieren */
+    #map {
+      height: 800px;
+    }
+  </style>
+  <script src="https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/markerclusterer.js"></script>
+</head>
+<body>
+  <div id="map"></div>
+  <div>
+    <input type="text" id="addressInput" placeholder="Adresse eingeben">
+    <button id="searchButton">Suchen</button>
+  </div>
+
+  <script>
+    let customMarker = null;
+    let placesService; // Platz für placesService definieren
+
+    function loadGoogleMapsScript() {
+      const script = document.createElement("script");
+      script.src = "https://maps.googleapis.com/maps/api/js?key=ZENSIERT&libraries=places&callback=initMap";
+      script.defer = true;
+      script.async = true;
+      script.onload = initMap;
+      document.head.appendChild(script);
+    }
+
+    // Funktion zum Hinzufügen von benutzerdefinierten Markern für Orte einer bestimmten Kategorie
+    function addCustomMarkersForCategory(map, category, icon, limit) {
+      placesService.nearbySearch(
+        {
+          location: map.getCenter(),
+          radius: 10000,
+          type: [category],
+          fields: ["name", "formatted_address", "geometry"],
+        },
+        (results, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK) {
+            const limitedResults = results.slice(0, limit);
+
+            for (const place of limitedResults) {
+              const marker = new google.maps.Marker({
+                position: place.geometry.location,
+                map: map,
+                icon: icon,
+              });
+            }
+          }
+        }
+      );
+    }
+
+    function initMap() {
+      const mapOptions = {
+        zoom: 12,
+        center: { lat: 53.5511, lng: 9.9937 },
+        mapId: "ZENSIERT",
+      };
+
+      const map = new google.maps.Map(document.getElementById("map"), mapOptions);
+
+      const input = document.getElementById("addressInput");
+      const autocomplete = new google.maps.places.Autocomplete(input, {
+        fields: ["formatted_address", "geometry"],
+        types: ["geocode"],
+      });
+
+      placesService = new google.maps.places.PlacesService(map); // placesService initialisieren
+
+      const iconSizes = {
+        airport: new google.maps.Size(32, 32),
+        medicalFacility: new google.maps.Size(32, 32),
+        shopping: new google.maps.Size(40, 40),
+        gasStation: new google.maps.Size(28, 28),
+      };
+
+      const icons = {
+        airport: {
+          url: "icons/airport.svg",
+          scaledSize: iconSizes.airport,
+        },
+        medicalFacility: {
+          url: "icons/medical-facility.svg",
+          scaledSize: iconSizes.medicalFacility,
+        },
+        shopping: {
+          url: "icons/shopping.svg",
+          scaledSize: iconSizes.shopping,
+        },
+        gasStation: {
+          url: "icons/gas-station.svg",
+          scaledSize: iconSizes.gasStation,
+        },
+        custom: {
+          url: "icons/home.svg",
+          scaledSize: new google.maps.Size(40, 40),
+        },
+      };
+
+      function addCustomMarkersForCategoryWithClusters(category, icon, limit) {
+        placesService.nearbySearch(
+          {
+            location: map.getCenter(),
+            radius: 10000,
+            type: [category],
+            fields: ["name", "formatted_address", "geometry"],
+          },
+          (results, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK) {
+              const limitedResults = results.slice(0, limit);
+
+              const markers = limitedResults.map((place) => {
+                return new google.maps.Marker({
+                  position: place.geometry.location,
+                  icon: icon,
+                });
+              });
+
+              const markerCluster = new MarkerClusterer(map, markers, {
+                imagePath: "icons/cluster/shoppingc",
+              });
+            }
+          }
+        );
+      }
+
+      // Kategorien und zugehörige benutzerdefinierte Symbole
+      const categories = [
+        { category: "airport", icon: icons.airport, limit: 10 },
+        { category: "hospital", icon: icons.medicalFacility, limit: 10 },
+        { category: "shopping", icon: icons.shopping, limit: 20 },
+        { category: "gas_station", icon: icons.gasStation, limit: 20 },
+      ];
+
+      map.addListener("idle", () => {
+        setTimeout(() => {
+          for (const { category, icon, limit } of categories) {
+            if (category === "shopping") {
+              addCustomMarkersForCategoryWithClusters(category, icon, limit);
+            } else {
+              addCustomMarkersForCategory(map, category, icon, limit);
+            }
+          }
+        }, 500);
+      });
+
+      // ...
+
+    }
+
+    loadGoogleMapsScript();
+  </script>
+</body>
+</html>
